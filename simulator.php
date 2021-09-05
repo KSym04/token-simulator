@@ -1,10 +1,10 @@
 <?php 
 /* Token Simulator Variables v1.0 */
-require './vendor/autoload.php';
+// require './vendor/autoload.php';
 
-use Codenixsv\CoinGeckoApi\CoinGeckoClient;
-$client = new CoinGeckoClient();
-$api_status = $client->ping();
+// use Codenixsv\CoinGeckoApi\CoinGeckoClient;
+// $client = new CoinGeckoClient();
+// $api_status = $client->ping();
 
 // Supply.
 $token_max_supply = 45000000000; // 45 billion tokens.
@@ -12,47 +12,54 @@ $circulating_supply = 45000000000; // 45 billion tokens.
 $token_min_supply = 1000000000; // 1 billion tokens.
 $total_supply = 0;
 
-// Treasury.
-$coin_data = $client->simple()->getPrice(
-    'bitcoin,ethereum,cardano,axie-infinity,smooth-love-potion,stellar,ripple,binancecoin', 
-    'usd'
-);
+// // Treasury.
+// $coin_data = $client->simple()->getPrice(
+//     'bitcoin,ethereum,cardano,axie-infinity,smooth-love-potion,stellar,ripple,binancecoin', 
+//     'usd'
+// );
+
+$coin_data['binancecoin']['usd'] = (double) 495.00;
 
 $coin_treasury = array(
-    'BTC' => $coin_data['bitcoin']['usd'],              // Bitcoin.
-    'ETH' => $coin_data['ethereum']['usd'],             // Ethereum.
-    'ADA' => $coin_data['cardano']['usd'],              // Cardano.
-    'AXS' => $coin_data['axie-infinity']['usd'],        // Axie Infinity.
-    'SLP' => $coin_data['smooth-love-potion']['usd'],   // Smooth Love Potion.
-    'XLM' => $coin_data['stellar']['usd'],              // Stellar.
-    'XRP' => $coin_data['ripple']['usd'],               // XRP.
-    'BNB' => number_format( $coin_data['binancecoin']['usd'] , 8 )          // Binance Coin.
+    // 'BTC' => $coin_data['bitcoin']['usd'],              // Bitcoin.
+    // 'ETH' => $coin_data['ethereum']['usd'],             // Ethereum.
+    // 'ADA' => $coin_data['cardano']['usd'],              // Cardano.
+    // 'AXS' => $coin_data['axie-infinity']['usd'],        // Axie Infinity.
+    // 'SLP' => $coin_data['smooth-love-potion']['usd'],   // Smooth Love Potion.
+    // 'XLM' => $coin_data['stellar']['usd'],              // Stellar.
+    // 'XRP' => $coin_data['ripple']['usd'],               // XRP.
+    'BNB' => $coin_data['binancecoin']['usd']           // Binance Coin.
 );
 
-$coin_airdrop_holdings  = 0.20; // airdrop 20%.
-$coin_airdrop_tvl       = 0.30; // airdrop 30%.
+// helpers.
+function checkSupply( $var ){
+    return ($var < 0 ? 0 : $var);
+}
+
+$coin_airdrop_holdings  = (double) 0.20; // airdrop 20%.
+$coin_airdrop_tvl       = (double) 0.30; // airdrop 30%.
 
 // Economy.
-$transaction_fee        = 0.02; // 2%.
-$buy_commission         = 0.10; // 10%.
-$sell_commission        = 0.20; // 20%.
+$transaction_fee        = (double) 0.02; // 2%.
+$buy_commission         = (double) 0.10; // 10%.
+$sell_commission        = (double) 0.20; // 20%.
 
-$allocations            = 0;
-$allocations_buy_tax    = 0.60; // 60%
+$allocations            = (double) 0;
+$allocations_buy_tax    = (double) 0.60; // 60%
 
-$burned_token           = 0;
-$burned_buy_tax         = 0.20; // 20%
+$burned_token           = (double) 0;
+$burned_buy_tax         = (double) 0.20; // 20%
 
-$tvl                    = 0;
-$tvl_buy_tax            = 0.20; // 20%.
+$tvl                    = (double) 0;
+$tvl_buy_tax            = (double) 0.20; // 20%.
 
-$token_holders          = 0;
+$token_holders          = (double) 0;
 
 // Build data.
-$days_performance = $_GET['days'];
-$current_date = date("Y-m-d");
+$days_performance = empty( $_GET['days'] ) ? 1825 : $_GET['days'];
+$current_date = date( "Y-m-d" );
 
-$initial_price_value = 0.000001; // value in USD
+$initial_price_value = (double) 0.000001; // value in USD
 $initial_buy         = $coin_data['binancecoin']['usd']; // price of 1 BNB
 $initial_asset       = 'BNB';
 
@@ -60,28 +67,51 @@ $initial_asset       = 'BNB';
 $first_buy                = $initial_buy / $initial_price_value; // someone bought with 1 BNB.
 $first_buy_taxed          = $first_buy * $buy_commission; // blockchain commission on buy.
 $first_coins_on_wallet    = $first_buy - $first_buy_taxed;
-$circulating_supply = $circulating_supply - $first_buy; // first buy will be less from max supply.
-$market_cap         = $initial_buy; // market cap since from 1 BNB
+$circulating_supply       = $circulating_supply - $first_buy; // first buy will be less from max supply.
+$market_cap               = $initial_buy; // market cap since from 1 BNB
 
 $current_price           = $market_cap / $circulating_supply;
 $current_price_formatted = number_format( $current_price, 10 ); // cheap coin!!!!
 
 // Rebalance computation.
-$allocations = $first_buy_taxed * $allocations_buy_tax;
+$allocations = array();
+$allocations[] = $first_buy_taxed * $allocations_buy_tax;
 
-$burned_token = $first_buy_taxed * $burned_buy_tax;
+$burned_token = array();
+$burned_token[] = $first_buy_taxed * $burned_buy_tax;
 
-$tvl = $first_buy_taxed * $tvl_buy_tax;
-$tvl_in_usd = $tvl * $current_price;
+$tvl = array();
+$tvl[] = $first_buy_taxed * $tvl_buy_tax;
+$tvl_in_usd = array_sum( $tvl ) * $current_price;
 
-$total_supply = $circulating_supply + $allocations + $burned_token + $tvl + $first_coins_on_wallet;
+$total_supply = $circulating_supply + array_sum( $allocations ) + array_sum( $burned_token ) + array_sum( $tvl ) + $first_coins_on_wallet;
 $token_holders++;
 
 // Data points.
 $datapoints = '[';
+$new_capital = array();
+$random_buy = array();
+$random_buy_taxed = array();
+$random_coins_on_wallet = array();
 for ( $x = 1; $x <= $days_performance; $x++ ) {
-    $generated_price = mt_rand( 1, 100 );
     $generated_date = date( "Y, m, d", strtotime( "+$x day", strtotime( $current_date ) ) );
+    
+    // Randomize market buy.
+    if( ! checkSupply( $circulating_supply == 0 ) ) {
+        // Random buy.
+        $new_capital = mt_rand( 100, 500 );
+        $random_buy[$x] = $new_capital / $current_price;
+        $random_buy_taxed[$x] = $random_buy[$x] * $buy_commission;
+        $random_coins_on_wallet[$x] = $random_buy[$x] - $random_buy_taxed[$x];
+
+        $market_cap = $market_cap + $new_capital;
+        $circulating_supply = $circulating_supply - $random_buy[$x];
+        $current_price = $market_cap / $circulating_supply;
+        $current_price_formatted = number_format( $current_price, 10 );
+        $total_supply = $circulating_supply + array_sum( $allocations ) + array_sum( $burned_token ) + array_sum( $tvl ) + $random_coins_on_wallet[$x];
+        $token_holders++;
+    }
+    
     $datapoints .= "{ x: new Date($generated_date), y: $current_price },";
 }
 rtrim( $datapoints, ',' );
@@ -109,27 +139,16 @@ $datapoints .= ']';
             },
             axisY: {
                 title: "Price",
-                suffix: "USD",
-                minimum: 1
             },
             toolTip:{
                 shared:true
             },  
-            legend:{
-                cursor:"pointer",
-                verticalAlign: "bottom",
-                horizontalAlign: "left",
-                dockInsidePlotArea: true,
-                itemclick: toogleDataSeries
-            },
             data: [{
                 type: "line",
-                showInLegend: true,
                 name: "Coin Price",
                 markerType: "circle",
                 xValueFormatString: "DD MMM, YYYY",
                 color: "#F08080",
-                yValueFormatString: "#.# USD",
                 dataPoints: <?php echo $datapoints; ?>
             }]
         };
@@ -232,7 +251,7 @@ $datapoints .= ']';
             </tr>
             <tr>
                 <td><label>Burned Token:</label></td>
-                <td><?php echo number_format( $burned_token ); ?></td>
+                <td><?php echo number_format( array_sum( $burned_token ) ); ?></td>
             </tr>
             <tr>
                 <td><label>Total Supply:</label></td>
@@ -241,7 +260,7 @@ $datapoints .= ']';
             <tr>
                 <td><label>Token Value Locked:</label></td>
                 <td>
-                    <?php echo number_format( $tvl, 4 ); ?><br />
+                    <?php echo number_format( array_sum( $tvl ), 4 ); ?><br />
                     <?php echo number_format( $tvl_in_usd, 4 ); ?> USD
                 </td>
             </tr>
@@ -259,9 +278,9 @@ $datapoints .= ']';
             <hr />
             <?php echo 'Coins: ' . number_format( $first_coins_on_wallet, 2 ) . '<br />'; ?>
             <hr />
-            <?php echo 'Allocations: ' . number_format( $allocations, 2 ) . '<br />'; ?>
-            <?php echo 'Burned: ' . number_format( $burned_token, 2 ) . '<br />'; ?>
-            <?php echo 'TVL: ' . number_format( $tvl, 2 ) . '<br />'; ?>
+            <?php echo 'Allocations: ' . number_format( array_sum( $allocations ), 2 ) . '<br />'; ?>
+            <?php echo 'Burned: ' . number_format( array_sum( $burned_token ), 2 ) . '<br />'; ?>
+            <?php echo 'TVL: ' . number_format( array_sum( $tvl ), 2 ) . '<br />'; ?>
         </td>
         <td>
             <h3>Latest Coin Prices</h3>
